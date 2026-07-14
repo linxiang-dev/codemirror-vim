@@ -223,45 +223,84 @@ function testVim(name, run, opts, expectedFail) {
     }
   }, expectedFail);
 };
+
+function snapshotDryRunState(cm, vim) {
+  return JSON.stringify({
+    value: cm.getValue(),
+    selections: cm.listSelections().map(function (selection) {
+      return {
+        anchor: selection.anchor,
+        head: selection.head,
+      };
+    }),
+    inputState: vim.inputState,
+    expectLiteralNext: vim.expectLiteralNext,
+  });
+}
+
+function dryRunKeyAndAssertNoSideEffects(cm, vim, key) {
+  var originalVim = cm.state.vim;
+  var before = snapshotDryRunState(cm, vim);
+  var commandDoneCount = 0;
+  var result;
+
+  function onCommandDone() {
+    commandDoneCount += 1;
+  }
+
+  CodeMirror.on(cm, "vim-command-done", onCommandDone);
+  try {
+    result = CodeMirror.Vim.dryRunKey(cm, key);
+  } finally {
+    CodeMirror.off(cm, "vim-command-done", onCommandDone);
+  }
+
+  eq(originalVim, cm.state.vim);
+  eq(before, snapshotDryRunState(cm, vim));
+  eq(0, commandDoneCount);
+
+  return result;
+}
+
+function normalizeJson(value) {
+  if (Array.isArray(value)) {
+    return value.map(normalizeJson);
+  }
+  if (value && typeof value == "object") {
+    var normalized = {};
+    Object.keys(value).sort().forEach(function(key) {
+      normalized[key] = normalizeJson(value[key]);
+    });
+    return normalized;
+  }
+  return value;
+}
+
+function eqDryRunResult(expected, actual) {
+  var expectedJson = JSON.stringify(normalizeJson(expected), null, 2);
+  var actualJson = JSON.stringify(normalizeJson(actual), null, 2);
+
+  if (expectedJson != actualJson) {
+    throw failure(
+      "Expected:\n" + expectedJson + "\n\nActual:\n" + actualJson,
+      eqDryRunResult
+    );
+  }
+}
+
 testVim(
   "dry_run_d_reports_pending_delete_without_side_effects",
   function (cm, vim) {
-    function snapshot() {
-      return JSON.stringify({
-        value: cm.getValue(),
-        selections: cm.listSelections().map(function (selection) {
-          return {
-            anchor: selection.anchor,
-            head: selection.head,
-          };
-        }),
-        inputState: vim.inputState,
-        expectLiteralNext: vim.expectLiteralNext,
-      });
-    }
+    var result = dryRunKeyAndAssertNoSideEffects(cm, vim, "d");
 
-    let commandDoneCount = 0;
-    function onCommandDone() {
-      commandDoneCount += 1;
-    }
-
-    let before = snapshot();
-    let result;
-    CodeMirror.on(cm, "vim-command-done", onCommandDone);
-    try {
-      result = CodeMirror.Vim.dryRunKey(cm, "d");
-    } finally {
-      CodeMirror.off(cm, "vim-command-done", onCommandDone);
-    }
-
-    eq(vim, cm.state.vim);
-
-    eq("pending", result.status);
-    eq("operator", result.command.type);
-    eq("delete", result.command.operator);
-
-    eq(before, snapshot());
-    eq(0, commandDoneCount);
+    eqDryRunResult({
+      status: "pending",
+      command: {
+        keys: "d",
+        type: "operator",
+        operator: "delete",
+      },
+    }, result);
   },
 );
 testVim('qq@q', function(cm, vim, helpers) {
