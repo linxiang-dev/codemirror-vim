@@ -303,6 +303,26 @@ testVim(
     }, result);
   },
 );
+testVim("dry_run_dd_resolves_delete_line_without_side_effects",
+  function(cm, vim, helpers) {
+    helpers.doKeys("d");
+    var result = dryRunKeyAndAssertNoSideEffects(cm, vim, "d");
+
+    eqDryRunResult({
+      status: "resolved",
+      command: {
+        keys: "dd",
+        type: "operatorMotion",
+        operator: "delete",
+        motion: "expandToLine",
+        motionArgs: {
+          linewise: true,
+          repeat: 1,
+        },
+      },
+    }, result);
+  }
+);
 testVim('qq@q', function(cm, vim, helpers) {
   cm.setCursor(0, 0);
   helpers.doKeys('q', 'q', 'l', 'l', 'q');
