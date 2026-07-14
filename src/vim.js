@@ -54,6 +54,7 @@ export function initVim(CM) {
  * @typedef { import("./types").InputStateInterface } InputStateInterface
  * @typedef { import("./types").SearchStateInterface } SearchStateInterface
  * @typedef { import("./types").InsertModeChanges } InsertModeChanges
+ * @typedef { import("./types").DryRunResult } DryRunResult
  */
   var Pos = CM.Pos;
 
@@ -901,7 +902,48 @@ export function initVim(CM) {
       }
     },
     multiSelectHandleKey: multiSelectHandleKey,
+    /**@type {(cm: CodeMirror, key: string) => DryRunResult} */
+    dryRunKey: function (cm, key) {
+      const vim = cm.state.vim;
+      if (!vim) {
+        return {
+          status: "unmatched",
+        }
+      }
+      let dryRunVim = cloneVimState(vim)
+      let inputState = dryRunVim.inputState;
+      inputState.keyBuffer.push(key);
 
+      let keys = inputState.keyBuffer.join("");
+      let context = vim.visualMode ? 'visual' : 'normal';
+      let match = commandDispatcher.matchCommand(
+        keys,
+        defaultKeymap,
+        inputState,
+        context,
+      );
+      if (match.type == 'none' || match.type == 'clear') {
+        return {status: "unmatched"};
+      } else if (match.type == 'partial') {
+        return {status: "pending"};
+      }
+
+      let command = match.command;
+      if (!command) {
+        return {status: "unmatched"};
+      }
+      if (command && command.type == 'operator' && !inputState.operator && !vim.visualMode) {
+        return {
+          status: 'pending',
+          command: command,
+        }
+      }
+
+      return {
+        status: 'resolved',
+        command: command,
+      }
+    },
     /**
      * This is the outermost function called by CodeMirror, after keys have
      * been mapped to their Vim equivalents.

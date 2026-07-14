@@ -289,6 +289,19 @@ export type vimKey =
     | keyToExCommand
     | keyToKeyCommand;
 
+export type DryRunResult =
+  | {
+      status: "unmatched";
+    }
+  | {
+      status: "pending";
+      command?: vimKey;
+    }
+  | {
+      status: "resolved";
+      command: vimKey;
+    };
+
 export type vimKeyMap = vimKey[];
 
 export interface InputStateInterface {

@@ -14,7 +14,8 @@
     "build": "cm-buildhelper src/index.ts && node scripts/addVersion.cjs && npm run build-types",
     "publish": "yarn run build && npm publish",
     "build-test-package": "bash ./scripts/build-test-package.sh",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "test-dry-run": "pnpm build && pnpm test --grep 'dry_run'"
   },
   "keywords": [
     "editor",

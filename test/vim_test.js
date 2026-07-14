@@ -223,6 +223,47 @@ function testVim(name, run, opts, expectedFail) {
     }
   }, expectedFail);
 };
+testVim(
+  "dry_run_d_reports_pending_delete_without_side_effects",
+  function (cm, vim) {
+    function snapshot() {
+      return JSON.stringify({
+        value: cm.getValue(),
+        selections: cm.listSelections().map(function (selection) {
+          return {
+            anchor: selection.anchor,
+            head: selection.head,
+          };
+        }),
+        inputState: vim.inputState,
+        expectLiteralNext: vim.expectLiteralNext,
+      });
+    }
+
+    let commandDoneCount = 0;
+    function onCommandDone() {
+      commandDoneCount += 1;
+    }
+
+    let before = snapshot();
+    let result;
+    CodeMirror.on(cm, "vim-command-done", onCommandDone);
+    try {
+      result = CodeMirror.Vim.dryRunKey(cm, "d");
+    } finally {
+      CodeMirror.off(cm, "vim-command-done", onCommandDone);
+    }
+
+    eq(vim, cm.state.vim);
+
+    eq("pending", result.status);
+    eq("operator", result.command.type);
+    eq("delete", result.command.operator);
+
+    eq(before, snapshot());
+    eq(0, commandDoneCount);
+  },
+);
 testVim('qq@q', function(cm, vim, helpers) {
   cm.setCursor(0, 0);
   helpers.doKeys('q', 'q', 'l', 'l', 'q');
