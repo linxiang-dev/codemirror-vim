@@ -223,6 +223,93 @@ function testVim(name, run, opts, expectedFail) {
     }
   }, expectedFail);
 };
+function normalizeJson(value) {
+  if (Array.isArray(value)) {
+    return value.map(normalizeJson);
+  }
+
+  if (value && typeof value == 'object') {
+    let normalized = {};
+    Object.keys(value).sort().forEach(
+      function(key) {
+        normalized[key] = normalizeJson(value[key]);
+      }
+    );
+    return normalized;
+  }
+
+  return value;
+};
+function snapshotVimResolverState(cm, vim) {
+  return JSON.stringify({
+    value: cm.getValue(),
+    selections: cm.listSelections().map(function(selection) {
+      return {
+        anchor: selection.anchor,
+        head: selection.head
+      }
+    }),
+    inputState: vim.inputState,
+    expectLiteralNext: vim.expectLiteralNext,
+    insertMode: vim.insertMode,
+    visualMode: vim.visualMode,
+    visualLine: vim.visualLine,
+    visualBlock: vim.visualBlock,
+  })
+};
+function resolveVimCommandWithoutSideEffects(cm, vim, key) {
+  const before = snapshotVimResolverState(cm, vim);
+  const originalContext = cm.state.vim;
+  let count = 0;
+
+  function onCommandDone() {
+    count += 1;
+  }
+
+  CodeMirror.on(cm, 'vim-command-done', onCommandDone);
+  let result;
+  try {
+    result = CodeMirror.Vim.resolveVimCommand(key, vim);
+  } finally {
+    CodeMirror.off(cm, 'vim-command-done', onCommandDone);
+  }
+
+  eq(originalContext, cm.state.vim);
+  eq(before, snapshotVimResolverState(cm, vim));
+  eq(0, count);
+
+  return result;
+};
+function eqResolveResult(expected, actual) {
+  const expectedJson = JSON.stringify(normalizeJson(expected), null, 2);
+  const actualJson = JSON.stringify(normalizeJson(actual), null, 2);
+
+  if (expectedJson !== actualJson) {
+    throw failure(
+      "Expected \n" + expectedJson + "\n to be equal to \n" + actualJson,
+      eqResolveResult
+    );
+  }
+};
+testVim(
+  "resolver_h_returns_complete_motion",
+  function(cm, vim) {
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'h');
+    eqResolveResult(
+      {
+        status: 'complete',
+        resolvedKeys: ['h'],
+        command: {
+          keys: 'h',
+          type: 'motion',
+          motion: 'moveByCharacters',
+          motionArgs: { forward: false }
+        }
+      },
+      result
+    )
+  }
+)
 testVim('qq@q', function(cm, vim, helpers) {
   cm.setCursor(0, 0);
   helpers.doKeys('q', 'q', 'l', 'l', 'q');
@@ -539,7 +626,7 @@ testVim('g0_g$', function(cm, vim, helpers) {
   is(/\.$/.test(cm.getValue()));
   helpers.doKeys('$', 'g', '0', 'd', 'g', '$');
   is(!/\.$/.test(cm.getValue()));
-  
+
 },{ lineNumbers: false, lineWrapping:true, value: 'This line is long to test movement of g$ and g0 over wrapped lines.' });
 testVim('}', function(cm, vim, helpers) {
   cm.setCursor(0, 0);
@@ -757,7 +844,7 @@ testVim('w_text_object_repeat', function(cm, vim, helpers) {
   eq('w1  ++  w_2   ', cm.getSelection());
   helpers.doKeys('<Esc>', 'v', 'a', 'w');
   eq('   \n w3', cm.getSelection());
-  
+
   helpers.doKeys('2', 'a', 'w');
   eq('   \n w3   xx \n', cm.getSelection());
   helpers.doKeys('a', 'w');
@@ -1418,7 +1505,7 @@ testVim('g?', function(cm, vim, helpers) {
   var register = helpers.getRegisterController().getRegister();
   eq('', register.toString());
   is(!register.linewise);
-  
+
   cm.setCursor(curStart);
   cm.setValue('abc efg();\nxyz');
   helpers.doKeys('g', '?', 'g', '?');
@@ -2649,7 +2736,7 @@ testVim('visual_join_blank', function(cm, vim, helpers) {
   helpers.assertCursorAt(0, 4);
   eq('1  2 5\n 6\n', cm.getValue());
   helpers.doKeys('u');
-  eq('1  2\n5\n 6\n', cm.getValue());  
+  eq('1  2\n5\n 6\n', cm.getValue());
 }, { value: '1 \n\t2\n\t  \n\n5\n 6\n'});
 testVim('visual_blank', function(cm, vim, helpers) {
   helpers.doKeys('v', 'k');
@@ -3881,7 +3968,7 @@ testVim('vFT', function(cm, vim, helpers) {
   helpers.doKeys('F', '1');
   helpers.assertCursorAt(0, 0);
 }, { value: '1123 123 123'});
-testVim('vf,;', function(cm, vim, helpers) { 
+testVim('vf,;', function(cm, vim, helpers) {
   helpers.doKeys('0', 'v')
   helpers.doKeys('f', '.');
   eq('ab.', cm.getSelection());
@@ -3890,7 +3977,7 @@ testVim('vf,;', function(cm, vim, helpers) {
   helpers.doKeys(';');
   eq('ab.cd.ef.', cm.getSelection());
   helpers.doKeys(',');
-  eq('ab.cd.', cm.getSelection()); 
+  eq('ab.cd.', cm.getSelection());
   helpers.doKeys(';');
   eq('ab.cd.ef.', cm.getSelection());
   helpers.doKeys('2', ',');
@@ -4283,13 +4370,13 @@ testVim('ex_advanced_range_syntax', function(cm, vim, helpers) {
   helpers.assertCursorAt(8, 0);
   helpers.doEx("'a,.y x");
   helpers.doEx('10?m??m?put! x');
-  eq("1\n2\n3\n4m\n5\n6\n4m\n5\n6\n7m\n8\n9m\n7m\n8\n9m\n10\n", cm.getValue()); 
+  eq("1\n2\n3\n4m\n5\n6\n4m\n5\n6\n7m\n8\n9m\n7m\n8\n9m\n10\n", cm.getValue());
   helpers.doEx('1+++2+/m/,1/m//m/+2-/m/+2d');
-  eq("1\n2\n3\n4m\n5\n6\n7m\n8\n9m\n10\n", cm.getValue()); 
+  eq("1\n2\n3\n4m\n5\n6\n7m\n8\n9m\n10\n", cm.getValue());
   helpers.doKeys('3', ':');
   eq(cm.getWrapperElement().querySelector("input").value, ".,.+2");
   helpers.doKeys('d', '\n');
-  eq("1\n2\n3\n4m\n5\n6\n10\n", cm.getValue()); 
+  eq("1\n2\n3\n4m\n5\n6\n10\n", cm.getValue());
 }, {value: "1\n2\n3\n4m\n5\n6\n7m\n8\n9m\n10\n"});
 testVim('ex_write', function(cm, vim, helpers) {
   var tmp = CodeMirror.commands.save;
@@ -4403,10 +4490,10 @@ testVim('ex_sort_pattern_no_r', function(cm, vim, helpers) {
   eq(' z \n in\n\n3 in a \n1 in c \n2 in d ', cm.getValue());
   helpers.doEx('sort r/in/');
   eq(' z \n\n in\n3 in a \n1 in c \n2 in d ', cm.getValue());
-  helpers.doEx('sort r/. in/');  
+  helpers.doEx('sort r/. in/');
   eq(' z \n\n in\n1 in c \n2 in d \n3 in a ', cm.getValue());
   helpers.doEx('sort /./');
-  eq('\n3 in a \n1 in c \n2 in d \n in\n z ', cm.getValue());  
+  eq('\n3 in a \n1 in c \n2 in d \n in\n z ', cm.getValue());
   helpers.doEx('sort /in d/');
   eq('\n3 in a \n1 in c \n in\n z \n2 in d ', cm.getValue());
 }, { value: '1 in c \n z \n2 in d \n in\n3 in a \n'});
@@ -4426,7 +4513,7 @@ testVim('ex_normal', function(cm, vim, helpers) {
   helpers.doEx('norm /h<Esc>"/p');
   helpers.doEx('norm /one<Cr>3li<Right> <Esc>"/p');
   eq('one one\nxxx\none one\none one', cm.getValue());
-  
+
   cm.setCursor(0, 0);
   helpers.doEx('g/one/normal    cw 1<lt>Esc><Esc>$i$');
   helpers.doKeys("rt");
@@ -4593,7 +4680,7 @@ testVim('ex_substitute_nopcre_special', function(cm, vim, helpers) {
     + '/M\\4 m\\3 V\\2 v\\1/'
   );
   eq('M4 m3 V2 v1 ', cm.getValue());
-  
+
   cm.setValue('10 12 13 42');
   helpers.doEx('s/\\m\\(1\\)\\v\\ze(\\d+)/\\2\\1 a\\1/g')
   eq('01 a10 21 a12 31 a13 42', cm.getValue());
@@ -5192,7 +5279,7 @@ testVim('ex_imap', function(cm, vim, helpers) {
   eq('joo4\njo8\nfoodefg', cm.getValue());
   helpers.doKeys('j');
   eq('xoo4\nfoo8\nfoodefg', cm.getValue());
-  
+
   if (cm.forEachSelection) {
     cm.setSelections([
       {head: makeCursor(0, 2), anchor: makeCursor(0, 2)},
@@ -5312,7 +5399,7 @@ testVim('noremap', function(cm, vim, helpers) {
   eq('w1;d;1', cm.getValue());
   helpers.doEx('mapclear');
 }, { value: 'wOrd1' });
-// noremap should capture all mappings of the rhs 
+// noremap should capture all mappings of the rhs
 testVim('noremap_all_mappings', function(cm, vim, helpers) {
   // mapping to 'u' should undo in normal mode and lowercase in visual mode
   CodeMirror.Vim.noremap('a', 'u');
@@ -5704,7 +5791,7 @@ testVim('option_key_on_mac', function(cm, vim, helpers) {
 
   typeKey.optionTextInput('v', '√');
   eq('<A-v>√', cm.getValue());
-  
+
   helpers.doEx(':map √ i√G<Esc>');
   typeKey.optionTextInput('v', '√');
   eq('<A-v√G>√', cm.getValue());
@@ -5985,7 +6072,7 @@ var typeKey = function() {
       shift = true;
     }
     var key = keyCodeToKey[(shift ? "s-" : "") + keyCode];
-    
+
     if (options && options.text) {
       alt = options.altKey;
       text = key = options.text;

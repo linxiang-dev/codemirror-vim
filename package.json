@@ -14,7 +14,11 @@
     "build": "cm-buildhelper src/index.ts && node scripts/addVersion.cjs && npm run build-types",
     "publish": "yarn run build && npm publish",
     "build-test-package": "bash ./scripts/build-test-package.sh",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "test-vim-command-resolver": "pnpm build && pnpm test --grep 'vim_resolver'",
+    "fix:whitespace": "git diff --name-only -z --diff-filter=ACMR | xargs -0 -r perl -pi -e 's/[ \\t]+$//'",
+    "check:whitespace": "git diff --check",
+    "lint:whitespace": "pnpm fix:whitespace && pnpm check:whitespace"
   },
   "keywords": [
     "editor",

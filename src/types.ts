@@ -4,12 +4,12 @@ export type Vim = ReturnType<typeof initVim>
 export type vimState = {
     onPasteFn?: () => void,
     sel: {head: Pos, anchor: Pos},
-    insertModeReturn: boolean, 
-    visualBlock: boolean, 
-    marks: {[mark: string]: Marker}, 
-    visualMode: boolean, 
-    insertMode: boolean, 
-    pasteFn?: any, 
+    insertModeReturn: boolean,
+    visualBlock: boolean,
+    marks: {[mark: string]: Marker},
+    visualMode: boolean,
+    insertMode: boolean,
+    pasteFn?: any,
     lastSelection: {
         anchorMark: Marker,
         headMark: Marker,
@@ -18,15 +18,15 @@ export type vimState = {
         visualMode: boolean,
         anchor: Pos,
         head: Pos,
-    }, 
-    searchState_?: SearchStateInterface, 
-    lastEditActionCommand: actionCommand|void, 
-    lastPastedText?: string, 
-    lastMotion?: MotionFn|null, 
-    options: {[optionName: string]: vimOption}, 
-    lastEditInputState: InputStateInterface|void, 
+    },
+    searchState_?: SearchStateInterface,
+    lastEditActionCommand: actionCommand|void,
+    lastPastedText?: string,
+    lastMotion?: MotionFn|null,
+    options: {[optionName: string]: vimOption},
+    lastEditInputState: InputStateInterface|void,
     inputState: InputStateInterface,
-    visualLine: boolean, 
+    visualLine: boolean,
     insertModeRepeat?: number,
     lastHSPos: number,
     lastHPos: number,
@@ -80,7 +80,7 @@ export type OperatorArgs = {
         visualBlock: boolean,
     },
     keepCursor?: boolean;
-} 
+}
 // version of CodeMirror with vim state checked
 export type CodeMirrorV = CodeMirror & {state: {vim: vimState}}
 export type OperatorFn = (cm: CodeMirrorV, args: OperatorArgs, ranges: CM5RangeInterface[], oldAnchor: Pos, newHead?: Pos) => Pos|void
@@ -119,7 +119,7 @@ export type ActionArgsPartial = {
 }
 export type ActionArgs = ActionArgsPartial & {repeat: number};
 
-export type ActionFn = (cm: CodeMirrorV, actionArgs: ActionArgs, vim: vimState) => void 
+export type ActionFn = (cm: CodeMirrorV, actionArgs: ActionArgs, vim: vimState) => void
 
 export type vimActions  = {
     jumpListWalk(cm: CodeMirrorV, actionArgs: ActionArgs, vim: vimState): void,
@@ -212,14 +212,14 @@ export type vimOption = {
     defaultValue?: boolean|null|undefined,
     callback?: booleanOptionCallback,
     value?: boolean
-}; 
+};
 export type defineOption1 = ((
     name: string,
     defaultValue: unknown,
     type: string,
     aliases?: string[]|undefined|null,
     callback?: optionCallback
-) => void) 
+) => void)
 export type defineOption2 = ((
     name: string,
     defaultValue: boolean|undefined|null,
@@ -269,7 +269,7 @@ export type operatorMotionCommand = allCommands & {
     operator: string,
     motionArgs?: MotionArgsPartial,
     operatorArgs?: OperatorArgs,
-    operatorMotionArgs?: { 
+    operatorMotionArgs?: {
         visualLine?: boolean,
     },
 }
@@ -311,7 +311,7 @@ export interface InputStateInterface {
 export interface SearchStateInterface {
     setReversed(reversed: boolean): void;
     isReversed(): boolean|undefined;
-    getQuery(): RegExp; 
+    getQuery(): RegExp;
     setQuery(query: string|RegExp): void;
     highlightTimeout: number|undefined;
     getOverlay(): {
@@ -323,12 +323,12 @@ export interface SearchStateInterface {
 }
 
 export type exCommandArgs = {
-    callback?: (() => void) | undefined; 
-    input?: string | undefined; 
+    callback?: (() => void) | undefined;
+    input?: string | undefined;
     line?: string | undefined;
     commandName?: string | undefined;
     argString?: string;
-    args?: string[]; 
+    args?: string[];
 };
 
 export type vimExCommands = {
@@ -386,7 +386,7 @@ export type ExParams = {
     argString: string,
     input: string,
     args?: string[],
-    
+
     line: number,
     lineEnd?: number,
     selectionLine: number,
@@ -397,12 +397,12 @@ export type ExParams = {
 }
 
 export type PromptOptions = {
-    onClose?: Function; 
+    onClose?: Function;
     prefix: string|HTMLElement;
-    desc?: string|HTMLElement; 
-    onKeyUp?: Function; 
-    onKeyDown: Function; 
-    value?: string; 
+    desc?: string|HTMLElement;
+    onKeyUp?: Function;
+    onKeyDown: Function;
+    value?: string;
     selectValueOnOpen?: boolean;
 }
 
@@ -413,3 +413,9 @@ declare global {
         trimStart(): string
     }
 }
+
+export type VimCommandResolution =
+    | { status: "incomplete"}
+    | { status: "complete", resolvedKeys: string[], command: vimKey}
+    | { status: "invalid"}
+    | { status: "passthrough"}
