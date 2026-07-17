@@ -322,6 +322,44 @@ testVim(
     );
   }
 );
+testVim(
+  "resolver_gg_returns_complete",
+  function(cm, vim, helpers) {
+    helpers.doKeys('g');
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'g');
+    eqResolveResult(
+      {
+        status: 'complete',
+        resolvedKeys: ['g', 'g'],
+        command: {
+          keys: 'gg',
+          motion: 'moveToLineOrEdgeOfDocument',
+          motionArgs: {
+            explicitRepeat: true,
+            forward: false,
+            linewise: true,
+            toJumplist: true,
+          },
+          type: 'motion',
+        }
+      },
+      result,
+    );
+  }
+);
+testVim(
+  'resolver_gz_returns_invalid',
+  function(cm, vim, helpers) {
+    helpers.doKeys('g');
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'z');
+    eqResolveResult(
+      {
+        status: 'invalid',
+      },
+      result,
+    );
+  }
+);
 testVim('qq@q', function(cm, vim, helpers) {
   cm.setCursor(0, 0);
   helpers.doKeys('q', 'q', 'l', 'l', 'q');

@@ -7185,6 +7185,12 @@ export function initVim(CM) {
       }
     }
 
+    if (match.type === 'none') {
+      return {
+        status: 'invalid',
+      }
+    }
+
     if (match.type === 'partial') {
       return {
         status: 'incomplete',
