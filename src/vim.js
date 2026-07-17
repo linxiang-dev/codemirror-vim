@@ -7169,10 +7169,13 @@ export function initVim(CM) {
   function resolveVimCommand(key, context) {
     const copiedContext = cloneVimState(context);
     const inputState = copiedContext.inputState;
+
     inputState.keyBuffer.push(key);
+
     const resolvedKeys = inputState.keyBuffer.slice();
     const keys = resolvedKeys.join('');
     const mode = copiedContext.visualMode ? 'visual': 'normal';
+
     const match = commandDispatcher.matchCommand(keys, defaultKeymap, copiedContext.inputState, mode);
     if (match.type === 'full' && match?.command) {
       return {
@@ -7181,6 +7184,13 @@ export function initVim(CM) {
         command: match.command,
       }
     }
+
+    if (match.type === 'partial') {
+      return {
+        status: 'incomplete',
+      }
+    }
+
     return {
       status: 'passthrough',
     }

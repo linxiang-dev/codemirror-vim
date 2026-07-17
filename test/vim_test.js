@@ -307,9 +307,21 @@ testVim(
         }
       },
       result
-    )
+    );
   }
-)
+);
+testVim(
+  "resolver_g_returns_incomplete",
+  function(cm, vim) {
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'g');
+    eqResolveResult(
+      {
+        status: 'incomplete',
+      },
+      result,
+    );
+  }
+);
 testVim('qq@q', function(cm, vim, helpers) {
   cm.setCursor(0, 0);
   helpers.doKeys('q', 'q', 'l', 'l', 'q');
