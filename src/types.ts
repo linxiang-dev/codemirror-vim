@@ -299,6 +299,7 @@ export interface InputStateInterface {
     motion: string | undefined | null;
     motionArgs: MotionArgs | null;
     keyBuffer: string[];
+    pendingResolvedKeys: string[];
     registerName?: string;
     changeQueue: null | { inserted: string, removed: string[]};
     operatorShortcut?: string;

@@ -1021,12 +1021,24 @@ export function initVim(CM) {
         }
         else if (match.type == 'clear') { clearInputState(cm); return true; }
         vim.expectLiteralNext = false;
-
+        
+        let matchedKeys = vim.inputState.keyBuffer.slice();
         vim.inputState.keyBuffer.length = 0;
         keysMatcher = /^(\d*)(.*)$/.exec(keys);
         if (keysMatcher && keysMatcher[1] && keysMatcher[1] != '0') {
           vim.inputState.pushRepeatDigit(keysMatcher[1]);
         }
+
+        if (
+          match.command &&
+          match.command.type == 'operator' &&
+          context == 'normal' &&
+          !vim.inputState.operator
+        ) {
+          vim.inputState.pendingResolvedKeys =
+            vim.inputState.pendingResolvedKeys.concat(matchedKeys);
+        }
+
         return match.command;
       }
 
@@ -1331,6 +1343,8 @@ export function initVim(CM) {
       this.motionArgs = null;
       /**@type{InputStateInterface["keyBuffer"]} */
       this.keyBuffer = []; // For matching multi-key commands.
+      /**@type{InputStateInterface["pendingResolvedKeys"]} */
+      this.pendingResolvedKeys = []; // For preserve keys across commands, used by command resolver
       /**@type{InputStateInterface["registerName"]} */
       this.registerName = undefined; // Defaults to the unnamed register.
       /**@type{InputStateInterface["changeQueue"]} */

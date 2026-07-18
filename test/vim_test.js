@@ -360,6 +360,70 @@ testVim(
     );
   }
 );
+// pendingResolvedKeys tests
+testVim(
+  'pendingResolvedKeys stores operator keys',
+  function(cm, vim, helpers) {
+    helpers.doKeys('d');
+
+    const keys = vim.inputState.pendingResolvedKeys;
+    const actual = globalThis.JSON.stringify(keys);
+      
+    eq(
+      '["d"]',
+      actual,
+    );
+  }
+);
+testVim(
+  'pendingResolvedKeys includes operator count',
+  function(cm, vim, helpers) {
+    helpers.doKeys('2', 'd');
+
+    eq(
+      '["2","d"]',
+      JSON.stringify(vim.inputState.pendingResolvedKeys)
+    );
+  }
+);
+testVim(
+  'pendingResolvedKeys preserves multikey operator tokens',
+  function(cm, vim, helpers) {
+    helpers.doKeys('g', 'U');
+
+    eq(
+      '["g","U"]',
+      JSON.stringify(vim.inputState.pendingResolvedKeys)
+    );
+  }
+);
+testVim(
+  'pendingResolvedKeys partial keymap match does not become pending resolved keys',
+  function(cm, vim, helpers) {
+    helpers.doKeys('g');
+
+    eq(
+      '[]',
+      JSON.stringify(vim.inputState.pendingResolvedKeys)
+    );
+    eq(
+      '["g"]',
+      JSON.stringify(vim.inputState.keyBuffer)
+    );
+  }
+);
+testVim(
+  'pendingResolvedKeys completed operator clears pendingResolvedKeys',
+  function(cm, vim, helpers) {
+    helpers.doKeys('y', 'y');
+
+    eq(
+      '[]',
+      JSON.stringify(vim.inputState.pendingResolvedKeys)
+    );
+  }
+);
+
 testVim('qq@q', function(cm, vim, helpers) {
   cm.setCursor(0, 0);
   helpers.doKeys('q', 'q', 'l', 'l', 'q');
