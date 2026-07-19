@@ -1021,7 +1021,7 @@ export function initVim(CM) {
         }
         else if (match.type == 'clear') { clearInputState(cm); return true; }
         vim.expectLiteralNext = false;
-        
+
         let matchedKeys = vim.inputState.keyBuffer.slice();
         vim.inputState.keyBuffer.length = 0;
         keysMatcher = /^(\d*)(.*)$/.exec(keys);
@@ -7181,38 +7181,155 @@ export function initVim(CM) {
   * @returns {VimCommandResolution}
   */
   function resolveVimCommand(key, context) {
-    const copiedContext = cloneVimState(context);
-    const inputState = copiedContext.inputState;
+    // Escape is always passed through because the caller does not intercept it.
+    if (key === '<Esc>') {
+      return { status: 'passthrough' };
+    }
 
-    inputState.keyBuffer.push(key);
+    const copiedContext = /**@type{vimState}*/(cloneVimState(context));
+    if (copiedContext.insertMode) {
+      // TODO
+      return {
+        status: 'passthrough'
+      }
+    } else {
+      // TODO: handleMacroRecording
+      const inputState = copiedContext.inputState;
+      inputState.keyBuffer.push(key);
 
-    const resolvedKeys = inputState.keyBuffer.slice();
-    const keys = resolvedKeys.join('');
-    const mode = copiedContext.visualMode ? 'visual': 'normal';
+      const resolvedKeys = inputState.keyBuffer.slice();
+      const keys = resolvedKeys.join('');
 
-    const match = commandDispatcher.matchCommand(keys, defaultKeymap, copiedContext.inputState, mode);
-    if (match.type === 'full' && match?.command) {
+      // ======= handleKeyNonInsertMode start =======
+      // A decimal count must start with 1-9, because a standalone 0 is a motion.
+      // A count-only prefix is valid but incomplete and must wait for a command.
+      // TODO: add test
+      if (/^[1-9]\d*$/.test(keys)) {
+        return {
+          status: 'incomplete',
+        }
+      }
+
+      // Splitting normalized keys into a count prefix and command keys must succeed.
+      const keysMatcher = /^(\d*)(.*)$/.exec(keys);
+      if (!keysMatcher) {
+        throw new Error('Invariant violation: Vim keys must be parseable');
+      }
+      let mainKey = keysMatcher[2] || keysMatcher[1];
+      // After a multikey operator such as `gU`, Vim accepts repeating only its
+      // final key (`gUU`) as the linewise form. Reconstruct the original operator
+      // key for matching, while preserving the actual resolved keys.
+      if (inputState.operatorShortcut && inputState.operatorShortcut.slice(-1) == mainKey) {
+        mainKey = inputState.operatorShortcut;
+      }
+
+      const mode = copiedContext.visualMode ? 'visual': 'normal';
+      const match = commandDispatcher.matchCommand(mainKey, defaultKeymap, inputState, mode);
+
+      // In Normal/Visual mode, no command can match or extend this key prefix,
+      // so the resolution session terminates as invalid.
+      if (match.type === 'none') {
+        return { status: 'invalid' };
+      }
+
+      if (match.type === 'partial') {
+        return { status: 'incomplete' }
+      }
+
+      // The command matched structurally, but its literal character or register
+      // argument is invalid, so the resolution session terminates as invalid.
+      if (match.type === 'clear') {
+        return { status: 'invalid' };
+      }
+
+      const count = keysMatcher[1];
+      if (count && count != '0') {
+        inputState.pushRepeatDigit(count);
+      }
+      // ======= handleKeyNonInsertMode end =======
+      switch(match.command?.type) {
+        case 'keyToKey':
+          // TODO: doKeyToKey
+          break;
+        case 'motion':
+          break;
+        case 'operator':
+          return advanceOperator(copiedContext, match.command, resolvedKeys);
+        case 'operatorMotion':
+          // TODO
+          break;
+        case 'action':
+          // TODO
+          break;
+        case 'search':
+          // TODO
+          break;
+        case 'ex':
+        case 'keyToEx':
+          // TODO
+          break;
+        default:
+          break;
+      }
+
+      return {
+        status: 'passthrough',
+      }
+    }
+  };
+  /**
+   * reference: processOperator
+   * @param {vimState} vimState
+   * @param {import("./types").operatorCommand} command
+   * @param {string[]} resolvedKeys
+   * @returns {VimCommandResolution}
+   */
+  function advanceOperator(vimState, command, resolvedKeys) {
+    const inputState = vimState.inputState;
+    const keys = [...inputState.pendingResolvedKeys, ...resolvedKeys];
+    if (inputState.operator) {
+      if (inputState.operator == command.operator) {
+        return {
+          status: 'complete',
+          resolvedKeys: keys,
+          command: {
+            ...command,
+            keys: keys.join(''),
+            operator: inputState.operator,
+            operatorArgs: {
+              ...inputState.operatorArgs,
+              linewise: true,
+            }
+          }
+        }
+      } else {
+        return {
+          status: 'invalid'
+        }
+      }
+    }
+
+    inputState.operator = command.operator;
+    inputState.operatorArgs = copyArgs(command.operatorArgs);
+    const operatorArgs = {
+      ...inputState.operatorArgs,
+      // reference evalInput
+      ...(vimState.visualLine ? { linewise: true } : {}),
+    };
+    if (vimState.visualMode) {
       return {
         status: 'complete',
-        resolvedKeys,
-        command: match.command,
+        resolvedKeys: keys,
+        command: {
+          ...command,
+          keys: keys.join(''),
+          operator: inputState.operator,
+          ...(Object.keys(operatorArgs).length > 0 ? { operatorArgs } : {}),
+        }
       }
     }
-
-    if (match.type === 'none') {
-      return {
-        status: 'invalid',
-      }
-    }
-
-    if (match.type === 'partial') {
-      return {
-        status: 'incomplete',
-      }
-    }
-
     return {
-      status: 'passthrough',
+      status: 'incomplete'
     }
   }
 

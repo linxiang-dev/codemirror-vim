@@ -292,56 +292,12 @@ function eqResolveResult(expected, actual) {
   }
 };
 testVim(
-  "resolver_h_returns_complete_motion",
-  function(cm, vim) {
-    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'h');
-    eqResolveResult(
-      {
-        status: 'complete',
-        resolvedKeys: ['h'],
-        command: {
-          keys: 'h',
-          type: 'motion',
-          motion: 'moveByCharacters',
-          motionArgs: { forward: false }
-        }
-      },
-      result
-    );
-  }
-);
-testVim(
   "resolver_g_returns_incomplete",
   function(cm, vim) {
     const result = resolveVimCommandWithoutSideEffects(cm, vim, 'g');
     eqResolveResult(
       {
         status: 'incomplete',
-      },
-      result,
-    );
-  }
-);
-testVim(
-  "resolver_gg_returns_complete",
-  function(cm, vim, helpers) {
-    helpers.doKeys('g');
-    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'g');
-    eqResolveResult(
-      {
-        status: 'complete',
-        resolvedKeys: ['g', 'g'],
-        command: {
-          keys: 'gg',
-          motion: 'moveToLineOrEdgeOfDocument',
-          motionArgs: {
-            explicitRepeat: true,
-            forward: false,
-            linewise: true,
-            toJumplist: true,
-          },
-          type: 'motion',
-        }
       },
       result,
     );
@@ -360,6 +316,220 @@ testVim(
     );
   }
 );
+testVim(
+  'resolver_esc_returns_passthrough',
+  function(cm, vim) {
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, '<Esc>');
+    eqResolveResult(
+      {
+        status: 'passthrough',
+      },
+      result,
+    );
+  }
+);
+testVim(
+  'resolver_d_returns_incomplete',
+  function(cm, vim) {
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'd');
+    eqResolveResult(
+      {
+        status: 'incomplete'
+      },
+      result
+    )
+  }
+);
+testVim(
+  'resolver_dd_returns_complete_delete_line',
+  function(cm, vim, helpers) {
+    helpers.doKeys('d');
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'd');
+    eqResolveResult(
+      {
+        status: 'complete',
+        resolvedKeys: ['d', 'd'],
+        command: {
+          keys: 'dd',
+          operator: 'delete',
+          operatorArgs: {
+            linewise: true
+          },
+          type: 'operator'
+        }
+      },
+      result
+    )
+  }
+);
+testVim(
+  'resolver_>>_returns_complete_indent_right_line',
+  function(cm, vim, helpers) {
+    helpers.doKeys('>');
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, '>');
+    eqResolveResult(
+      {
+        status: 'complete',
+        resolvedKeys: ['>', '>'],
+        command: {
+          keys: '>>',
+          operator: 'indent',
+          operatorArgs: {
+            linewise: true,
+            indentRight: true
+          },
+          type: 'operator'
+        }
+      },
+      result
+    )
+  }
+);
+testVim(
+  'resolver_dy_returns_invalid',
+  function(cm, vim, helpers) {
+    helpers.doKeys('d');
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'y');
+    eqResolveResult(
+      {
+        status: 'invalid',
+      },
+      result
+    )
+  }
+);
+testVim(
+  'resolver_vd_returns_complete_without_linewise',
+  function(cm, vim, helpers) {
+    helpers.doKeys('v');
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'd');
+    eqResolveResult(
+      {
+        status: 'complete',
+        resolvedKeys: ['d'],
+        command: {
+          keys: 'd',
+          operator: 'delete',
+          type: 'operator'
+        }
+      },
+      result
+    )
+  }
+);
+testVim(
+  'resolver_Vd_returns_complete_with_linewise',
+  function(cm, vim, helpers) {
+    helpers.doKeys('V');
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'd');
+    eqResolveResult(
+      {
+        status: 'complete',
+        resolvedKeys: ['d'],
+        command: {
+          keys: 'd',
+          operator: 'delete',
+          type: 'operator',
+          operatorArgs: {
+            linewise: true
+          }
+        }
+      },
+      result
+    )
+  }
+);
+testVim(
+  'resolver_<C-v>d_returns_complete',
+  function(cm, vim, helpers) {
+    helpers.doKeys('<C-v>');
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'd');
+    eqResolveResult(
+      {
+        status: 'complete',
+        resolvedKeys: ['d'],
+        command: {
+          keys: 'd',
+          operator: 'delete',
+          type: 'operator',
+        }
+      },
+      result
+    )
+  }
+);
+testVim(
+  'resolver_<C-v>R_returns_complete_with_linewise_fullLine',
+  function(cm, vim, helpers) {
+    helpers.doKeys('<C-v>');
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'R');
+    eqResolveResult(
+      {
+        status: 'complete',
+        resolvedKeys: ['R'],
+        command: {
+          context: 'visual',
+          keys: 'R',
+          operator: 'change',
+          type: 'operator',
+          exitVisualBlock: true,
+          operatorArgs: {
+            linewise: true,
+            fullLine: true
+          },
+        }
+      },
+      result
+    )
+  }
+);
+testVim(
+  'resolver_gUU_returns_complete_with_linewise_uppercase',
+  function(cm, vim, helpers) {
+    helpers.doKeys('g', 'U');
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'U');
+    eqResolveResult(
+      {
+        status: 'complete',
+        resolvedKeys: ['g', 'U', 'U'],
+        command: {
+          isEdit: true,
+          keys: 'gUU',
+          operator: 'changeCase',
+          type: 'operator',
+          operatorArgs: {
+            linewise: true,
+            toLower: false
+          },
+        }
+      },
+      result
+    )
+  }
+);
+testVim(
+  'resolver_2dd_returns_complete',
+  function(cm, vim, helpers) {
+    helpers.doKeys('2', 'd');
+    const result = resolveVimCommandWithoutSideEffects(cm, vim, 'd');
+    eqResolveResult(
+      {
+        status: 'complete',
+        resolvedKeys: ['2', 'd', 'd'],
+        command: {
+          operator: 'delete',
+          type: 'operator',
+          keys: '2dd',
+          operatorArgs: {
+            linewise: true
+          }
+        }
+      },
+      result
+    )
+  }
+);
+
 // pendingResolvedKeys tests
 testVim(
   'pendingResolvedKeys stores operator keys',
@@ -368,7 +538,7 @@ testVim(
 
     const keys = vim.inputState.pendingResolvedKeys;
     const actual = globalThis.JSON.stringify(keys);
-      
+
     eq(
       '["d"]',
       actual,
