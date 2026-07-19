@@ -20,5 +20,6 @@ capabilities that are not currently available upstream.
 - This fork is maintained primarily for this project's needs. Upstream
   contributions are not a goal unless a change fixes an isolated, obvious bug.
 
-- Read `docs/adr/0001-additive-vim-command-dry-run.md` before changing dry-run
-  behavior.
+- The dry-run and command-resolver experiments are abandoned. Read
+  `docs/EXPERIMENTS.md` before proposing another pre-execution command
+  inspection mechanism.

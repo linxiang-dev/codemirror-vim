@@ -1,6 +1,6 @@
 # ADR-0001: Add an additive Vim command dry-run interface
 
-Status: accepted
+Status: superseded by abandonment; retained for historical context
 
 ## Context
 
