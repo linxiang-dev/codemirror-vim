@@ -1,5 +1,8 @@
 # Vim Command Resolution
 
+Status: archived; the resolver experiment was abandoned. See
+[the resolver postmortem](../resolver-postmortem.md).
+
 This context describes the language used to recognize one Vim command from an incremental stream of logical keys, independently of command execution.
 
 ## Language
